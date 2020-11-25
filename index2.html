@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+    <!-- Resources -->
+    <script src="https://cdn.amcharts.com/lib/4/core.js"></script>
+    <script src="https://cdn.amcharts.com/lib/4/charts.js"></script>
+    <script src="https://cdn.amcharts.com/lib/4/themes/animated.js"></script>
+    <!-- Bootstrap styling for the Data TABLE -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
+        integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+
+    <!-- Styles -->
+    <style>
+        body {
+            margin: 2em 1em;
+            background-color: whitesmoke;
+        }
+
+        #figures {
+            text-align: center;
+        }
+
+        #chartdiv {
+            width: 100%;
+            height: 95vh;
+        }
+
+        #chartdata {
+            margin-top: 2em;
+            font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        #chartdata table {
+            width: 100%;
+            text-align: center;
+            padding: 0;
+        }
+
+        #chartdata th {
+            background-color: white;
+            position: sticky;
+            top: 0;
+            font-size: 1.25em;
+            border: 2px solid #8067DC;
+        }
+
+        #chartdata td {
+            width: 200px;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <!-- HTML -->
+    <div id=figures></div>
+    <div id="chartdiv"></div>
+    <div id="chartdata"></div>
+
+    <!-- Chart code -->
+    <script>
+        am4core.ready(function () {
+
+            // Themes 
+            am4core.useTheme(am4themes_animated);
+
+            // Create chart instance
+            var chart = am4core.create("chartdiv", am4charts.XYChart);
+
+            // Increase contrast by taking evey second color
+            chart.colors.step = 3;
+
+            // Add data
+            chart.data = generateChartData();
+
+            // Create DATE axes (bottom)
+            var dateAxis = chart.xAxes.push(new am4charts.DateAxis());
+            dateAxis.renderer.minGridDistance = 50;
+            dateAxis.renderer.grid.template.opacity = 0.1;
+
+
+            // Create VERTICAL VALUE AXES and series
+            function createAxisAndSeries(field, name, opposite, bullet) {
+                var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+                if (chart.yAxes.indexOf(valueAxis) != 0) {
+                    valueAxis.syncWithAxis = chart.yAxes.getIndex(0);
+                }
+
+                valueAxis.renderer.grid.template.opacity = 0.1;
+
+                var series = chart.series.push(new am4charts.LineSeries());
+                series.dataFields.valueY = field;
+                series.dataFields.dateX = "date";
+                series.strokeWidth = 2;
+                series.yAxis = valueAxis;
+                series.name = name;
+                series.tooltipText = "{name}: [bold]{valueY}[/]";
+                series.tensionX = 0.8;
+                series.showOnInit = true;
+
+                var interfaceColors = new am4core.InterfaceColorSet();
+
+                switch (bullet) {
+                    case "triangle":
+                        var bullet = series.bullets.push(new am4charts.Bullet());
+                        bullet.width = 12;
+                        bullet.height = 12;
+                        bullet.horizontalCenter = "middle";
+                        bullet.verticalCenter = "middle";
+
+                        var triangle = bullet.createChild(am4core.Triangle);
+                        triangle.stroke = interfaceColors.getFor("background");
+                        triangle.strokeWidth = 2;
+                        triangle.direction = "top";
+                        triangle.width = 12;
+                        triangle.height = 12;
+                        break;
+                    case "rectangle":
+                        var bullet = series.bullets.push(new am4charts.Bullet());
+                        bullet.width = 10;
+                        bullet.height = 10;
+                        bullet.horizontalCenter = "middle";
+                        bullet.verticalCenter = "middle";
+
+                        var rectangle = bullet.createChild(am4core.Rectangle);
+                        rectangle.stroke = interfaceColors.getFor("background");
+                        rectangle.strokeWidth = 2;
+                        rectangle.width = 10;
+                        rectangle.height = 10;
+                        break;
+                    default:
+                        var bullet = series.bullets.push(new am4charts.CircleBullet());
+                        bullet.circle.stroke = interfaceColors.getFor("background");
+                        bullet.circle.strokeWidth = 2;
+                        break;
+                }
+
+                valueAxis.renderer.line.strokeOpacity = 1;
+                valueAxis.renderer.line.strokeWidth = 2;
+                valueAxis.renderer.line.stroke = series.stroke;
+                valueAxis.renderer.labels.template.fill = series.stroke;
+                valueAxis.renderer.opposite = opposite;
+            }
+
+            createAxisAndSeries("confirmed", "Confirmed", false, "circle");
+            createAxisAndSeries("recovered", "Recovered", true, "triangle");
+            createAxisAndSeries("deaths", "Deaths", true, "rectangle");
+
+            // Add legend
+            chart.legend = new am4charts.Legend();
+
+            // Add cursor
+            chart.cursor = new am4charts.XYCursor();
+
+            // generate some random data, quite different range
+            function generateChartData() {
+                var chartData = [];
+                let date = new Date(2020).toDateString();
+                let confirmed = 0;
+                let recovered = 0;
+                let deaths = 0;
+
+                const api_url = 'https://covid19.mathdro.id/api/'
+                async function getData() {
+                    try {
+                        const response = await fetch(api_url)
+                        const data = await response.json()
+                        // console.log('data', response)
+
+                        confirmed = data.confirmed.value
+                        recovered = data.recovered.value
+                        deaths = data.deaths.value
+
+                        chartData.push({
+                            date: date,
+                            confirmed: confirmed,
+                            recovered: recovered,
+                            deaths: deaths
+                        })
+                        document.getElementById('figures').textContent = "Confirmed Cases: " + confirmed + " Deaths: " + deaths + "   Recovered: " + recovered
+
+
+                    } catch (error) {
+                        console.log("something wrong with the fetch")
+                    }
+
+                    console.log('OOchartData', chartData)
+
+                    // const api_url = 'https://api.wheretheiss.at/v1/satellites/25544'
+                    // async function getISS() {
+                    //     const response = await fetch(api_url)
+                    //     const data = await response.json()
+                    //     console.log(data)
+                    //     const { latitude, longitude } = data
+                    //     console.log('longitude:', data.longitude)
+                    //     console.log('latitude:', data.latitude)
+
+                    // chartData.push({
+                    //     // date: lastUpdate,
+                    //     confirmed: confirmed.map(({ confirmed }) => confirmed),
+                    //     recovered: recovered.map(({ recovered }) => recovered),
+                    //     deaths: deaths.map(({ deaths }) => deaths)
+                    // })
+                    // console.log('confirmed:', confirmed)
+                    // console.log('recovered:', recovered)
+
+                    /*var firstDate = new Date();
+                    firstDate.setDate(firstDate.getDate() - 100);
+                    firstDate.setHours(0, 0, 0, 0);
+     
+                    var visits = 1600;
+                    var hits = 2900;
+                    var views = 8700;
+     
+                    for (var i = 0; i < 15; i++) {
+                        // we create date objects here. In your data, you can have date strings
+                        // and then set format of your dates using chart.dataDateFormat property,
+                        // however when possible, use date objects, as this will speed up chart rendering.
+                        var newDate = new Date(firstDate);
+                        newDate.setDate(newDate.getDate() + i);
+     
+                        visits += Math.round((Math.random() < 0.5 ? 1 : -1) * Math.random() * 10);
+                        hits += Math.round((Math.random() < 0.5 ? 1 : -1) * Math.random() * 10);
+                        views += Math.round((Math.random() < 0.5 ? 1 : -1) * Math.random() * 10);
+                    
+                    chartData.push({
+                        date: newDate,
+                        visits: visits,
+                        hits: hits,
+                        views: views
+                    }); */
+                }
+                // getISS()
+
+                getData()
+                return chartData;
+            }
+
+
+
+            // CHART TABLE
+            chart.events.on("datavalidated", function (ev) {
+                chart.exporting.getHTML("html", {
+                    addColumnNames: true, tableClass: "table table-striped table-hover"
+                }, false).then(function (html) {
+                    var div = document.getElementById("chartdata");
+                    div.innerHTML = html;
+                });
+            });
+
+        }); // end am4core.ready()
+    </script>
+
+</body>
+
+</html>
